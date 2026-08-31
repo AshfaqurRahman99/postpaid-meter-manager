@@ -108,6 +108,10 @@ export default function Home() {
   const [showWzpdclModal, setShowWzpdclModal] = useState<boolean>(false);
   const [wzpdclBillData, setWzpdclBillData] = useState<WzpdclBillData | null>(null);
 
+  // SMS Modal State
+  const [showSmsModal, setShowSmsModal] = useState<boolean>(false);
+  const [copiedSms, setCopiedSms] = useState<boolean>(false);
+
   // ---------------- Database Sync Logic ----------------
   useEffect(() => {
     fetch('/api/meters')
@@ -202,43 +206,49 @@ export default function Home() {
     setShowWzpdclModal(true);
   };
 
-  const downloadWzpdclBillPDF = () => {
-    const printContent = document.getElementById("wzpdcl-printable-bill")?.innerHTML;
-    if (!printContent) return;
+  // Generate SMS Text Format
+  const generateSmsText = (): string => {
+    const monthParts = billingMonth.split(" ");
+    const monthName = monthParts[0] || billingMonth;
+    const yearName = monthParts[1] || "";
 
-    const win = window.open('', '', 'height=700,width=700');
-    win?.document.write('<html><head><title>WZPDCL Estimated Bill</title>');
-    win?.document.write('<style>body{font-family:sans-serif;padding:20px;color:#111;} table{width:100%;border-collapse:collapse;margin-top:15px;} th,td{padding:8px;border:1px solid #ddd;text-align:left;}</style>');
-    win?.document.write('</head><body>');
-    win?.document.write(printContent);
-    win?.document.write('</body></html>');
-    win?.document.close();
-    win?.focus();
-    setTimeout(() => {
-      win?.print();
-      win?.close();
-    }, 500);
+    let sms = `${monthName}, ${yearName}\n`;
+
+    Object.keys(meters).forEach(m => {
+      const meterData = meters[m];
+      if (meterData.isActive === false) return;
+
+      const record = meterData.history.find(h => h.month === billingMonth);
+      const units = record ? record.billed : 0;
+      const fullMeterNo = meterData.meterNumber || "000";
+      const last3Digit = fullMeterNo.slice(-3);
+
+      // Format: Last 3 digit : Unit KW hr
+      sms += `${last3Digit}: ${units} KW hr\n`;
+    });
+
+    return sms.trim();
   };
 
-  // const downloadWzpdclBillPDF = () => {
-  //   const input = document.getElementById("wzpdcl-printable-bill");
-  //   if (!input) return;
-  //   html2canvas(input, {
-  //     scale: 2,
-  //     useCORS: true,
-  //     onclone: (documentClone) => {
-  //       const el = documentClone.getElementById("wzpdcl-printable-bill");
-  //       if (el) el.style.color = "#000000";
-  //     }
-  //   }).then((canvas) => {
-  //     const imgData = canvas.toDataURL("image/png");
-  //     const pdf = new jsPDF("p", "mm", "a5");
-  //     const pdfWidth = pdf.internal.pageSize.getWidth();
-  //     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-  //     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-  //     pdf.save(`WZPDCL_Estimated_Bill_${selectedMeter.split(" ")[0]}_${billingMonth}.pdf`);
-  //   });
-  // };
+  const handleCopySms = () => {
+    const text = generateSmsText();
+    navigator.clipboard.writeText(text);
+    setCopiedSms(true);
+    setTimeout(() => setCopiedSms(false), 2000);
+  };
+
+  const downloadWzpdclBillPDF = () => {
+    const input = document.getElementById("wzpdcl-printable-bill");
+    if (!input) return;
+    html2canvas(input, { scale: 2 }).then((canvas) => {
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a5");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`WZPDCL_Estimated_Bill_${selectedMeter.split(" ")[0]}_${billingMonth}.pdf`);
+    });
+  };
 
   const downloadSinglePDF = () => {
     const printContent = document.getElementById("bill-receipt")?.innerHTML;
@@ -257,27 +267,6 @@ export default function Home() {
       win?.close();
     }, 500);
   };
-
-  // const downloadSinglePDF = () => {
-  //   const input = document.getElementById("bill-receipt");
-  //   if (!input) return;
-  //   html2canvas(input, {
-  //     scale: 2,
-  //     useCORS: true,
-  //     // html2canvas এর লেটেস্ট ভার্সনে lab কালার এরর এড়াতে অনক্লোন হুক ব্যবহার করা
-  //     onclone: (documentClone) => {
-  //       const el = documentClone.getElementById("bill-receipt");
-  //       if (el) el.style.color = "#000000";
-  //     }
-  //   }).then((canvas) => {
-  //     const imgData = canvas.toDataURL("image/png");
-  //     const pdf = new jsPDF("p", "mm", "a4");
-  //     const pdfWidth = pdf.internal.pageSize.getWidth();
-  //     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-  //     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-  //     pdf.save(`Bill_${selectedMeter.split(" ")[0]}_${billingMonth}.pdf`);
-  //   });
-  // };
 
   const calculateBilling = (rawInputVal: number, currentMeterConfig: MeterConfig, prevReading: number, prevCarry: number): CalcResult | null => {
     const consumed = rawInputVal - prevReading;
@@ -513,26 +502,6 @@ export default function Home() {
     }, 500);
   };
 
-  // const triggerReportDownload = () => {
-  //   const input = document.getElementById("printable-report");
-  //   if (!input) return;
-  //   html2canvas(input, {
-  //     scale: 2,
-  //     useCORS: true,
-  //     onclone: (documentClone) => {
-  //       const el = documentClone.getElementById("printable-report");
-  //       if (el) el.style.color = "#000000";
-  //     }
-  //   }).then((canvas) => {
-  //     const imgData = canvas.toDataURL("image/png");
-  //     const pdf = new jsPDF("l", "mm", "a4");
-  //     const pdfWidth = pdf.internal.pageSize.getWidth();
-  //     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-  //     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-  //     pdf.save(`All_Meters_Report_${billingMonth}.pdf`);
-  //   });
-  // };
-
   const getShortMonth = (monthString: string): string => {
     const parts = monthString.split(" ");
     if (parts.length < 2) return monthString;
@@ -577,7 +546,7 @@ export default function Home() {
             </button>
           </div>
 
-          <div id="wzpdcl-printable-bill" style={{ backgroundColor: "#ffffff", padding: "32px", fontFamily: "sans-serif", color: "#111827", width: "100%", maxWidth: "600px", borderTop: "8px solid #2563eb" }}>
+          <div id="wzpdcl-printable-bill" className="bg-white p-8 font-sans text-gray-900 w-full max-w-[600px] shadow-2xl rounded-xl border-t-8 border-blue-600">
             <div className="text-center border-b-2 border-gray-200 pb-4 mb-4">
               <h2 className="text-xl font-extrabold uppercase tracking-wider text-blue-800">Estimated Electricity Bill</h2>
               <p className="text-xs text-gray-500 mt-1 uppercase font-bold">Based on WZPDCL LT-A Tariff</p>
@@ -655,6 +624,15 @@ export default function Home() {
         <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col items-center overflow-y-auto p-4 sm:p-10 animation-fade-in custom-scrollbar">
 
           <div className="w-full max-w-[1050px] flex justify-end gap-3 mb-4">
+
+            {/* SMS Format Button placed right beside OK button */}
+            <button
+              onClick={() => setShowSmsModal(true)}
+              className="bg-emerald-600 text-white hover:bg-emerald-700 px-5 py-2.5 rounded-lg font-extrabold shadow-lg flex items-center gap-2 transition-all"
+            >
+              💬 SMS Format
+            </button>
+
             {!isMasterLocked ? (
               <button
                 onClick={handleMasterLock}
@@ -742,6 +720,39 @@ export default function Home() {
         </div>
       )}
 
+      {/* ---------------- SMS Format Modal ---------------- */}
+      {showSmsModal && (
+        <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md animation-fade-in">
+            <h2 className="text-xl font-bold text-gray-800 mb-2 flex items-center gap-2">
+              💬 SMS Format ({billingMonth})
+            </h2>
+            <p className="text-xs text-gray-500 mb-4">বিলারকে পাঠানোর জন্য নিচের ফরম্যাটটি অটোমেটিক তৈরি হয়েছে। কপি করে পেস্ট করে দিন:</p>
+
+            <textarea
+              readOnly
+              className="w-full h-56 p-3 font-mono text-sm bg-gray-50 border border-gray-300 rounded-lg focus:outline-none resize-none"
+              value={generateSmsText()}
+            />
+
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setShowSmsModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-bold hover:bg-gray-200 transition"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleCopySms}
+                className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold hover:bg-emerald-700 transition shadow-md flex items-center justify-center gap-2"
+              >
+                {copiedSms ? "✅ Copied!" : "📋 Copy SMS"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ---------------- Add Meter Modal ---------------- */}
       {isAddingMeter && (
         <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
@@ -823,10 +834,10 @@ export default function Home() {
                     setSelectedMeter(m); setResult(null); setActualReading(""); setIsEditingConfig(false); setIsInputUnlocked(false);
                   }}
                   className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 border border-transparent flex justify-between items-center ${selectedMeter === m
-                    ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-                    : !isActive
-                      ? "text-gray-400 opacity-60 hover:bg-gray-50"
-                      : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
+                      ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
+                      : !isActive
+                        ? "text-gray-400 opacity-60 hover:bg-gray-50"
+                        : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
                     }`}
                 >
                   <div className="flex items-center overflow-hidden pr-2 flex-wrap gap-x-1">
@@ -1063,7 +1074,7 @@ export default function Home() {
                 ) : (
                   <div className="animation-fade-in flex flex-col h-full justify-between">
 
-                    <div id="bill-receipt" style={{ backgroundColor: "#ffffff", padding: "20px", border: "1px solid #d1d5db", marginBottom: "16px" }}>
+                    <div id="bill-receipt" className="bg-white p-5 border border-gray-300 rounded shadow-sm mb-4">
 
                       <div className="flex justify-between items-center border-b-2 border-gray-200 pb-3 mb-4">
                         <h2 className="text-base font-extrabold uppercase tracking-widest text-gray-900 m-0">Invoice Slip</h2>
