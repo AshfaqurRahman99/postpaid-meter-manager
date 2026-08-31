@@ -24,3 +24,30 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-report,
+  #printable-report *,
+  #wzpdcl-printable-bill,
+  #wzpdcl-printable-bill *,
+  #bill-receipt,
+  #bill-receipt * {
+    visibility: visible;
+  }
+
+  #printable-report,
+  #wzpdcl-printable-bill,
+  #bill-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    box-shadow: none !important;
+  }
+}
