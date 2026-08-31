@@ -26,28 +26,51 @@ body {
 }
 
 @media print {
-  body * {
-    visibility: hidden;
+  body {
+    background: white !important;
+    color: black !important;
   }
 
-  #printable-report,
-  #printable-report *,
-  #wzpdcl-printable-bill,
-  #wzpdcl-printable-bill *,
-  #bill-receipt,
-  #bill-receipt * {
-    visibility: visible;
+  /* ড্যাশবোর্ডের বাকি সব এলিমেন্ট পুরোপুরি লুকিয়ে ফেলা */
+  body>* {
+    display: none !important;
   }
 
-  #printable-report,
+  /* শুধুমাত্র মডাল বা প্রিন্ট পপআপ উইন্ডোটি দৃশ্যমান রাখা */
+  .fixed,
+  .fixed * {
+    visibility: visible !important;
+  }
+
+  .fixed {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    z-index: 9999 !important;
+    display: block !important;
+  }
+
+  /* প্রিন্ট বাটন বা ক্লোজ বাটনগুলো প্রিন্টে দেখানোর দরকার নেই */
+  button,
+  .fixed button {
+    display: none !important;
+  }
+
+  /* মডালের ভেতরের মূল বিল বা রিপোর্ট বক্সটি এক পেজে ফিট করা */
   #wzpdcl-printable-bill,
+  #printable-report,
   #bill-receipt {
-    position: absolute;
-    left: 0;
-    top: 0;
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 10px !important;
+    padding: 0 !important;
     box-shadow: none !important;
   }
 }
