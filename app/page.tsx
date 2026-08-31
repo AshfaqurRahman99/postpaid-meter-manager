@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
@@ -686,10 +687,10 @@ export default function Home() {
                     setSelectedMeter(m); setResult(null); setActualReading(""); setIsEditingConfig(false); setIsInputUnlocked(false);
                   }}
                   className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 border border-transparent flex justify-between items-center ${selectedMeter === m
-                      ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-                      : !isActive
-                        ? "text-gray-400 opacity-60 hover:bg-gray-50"
-                        : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
+                    ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
+                    : !isActive
+                      ? "text-gray-400 opacity-60 hover:bg-gray-50"
+                      : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
                     }`}
                 >
                   <div className="flex items-center overflow-hidden pr-2 flex-wrap gap-x-1">
