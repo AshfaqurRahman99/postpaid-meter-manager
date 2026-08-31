@@ -205,7 +205,14 @@ export default function Home() {
   const downloadWzpdclBillPDF = () => {
     const input = document.getElementById("wzpdcl-printable-bill");
     if (!input) return;
-    html2canvas(input, { scale: 2 }).then((canvas) => {
+    html2canvas(input, {
+      scale: 2,
+      useCORS: true,
+      onclone: (documentClone) => {
+        const el = documentClone.getElementById("wzpdcl-printable-bill");
+        if (el) el.style.color = "#000000";
+      }
+    }).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a5");
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -218,7 +225,15 @@ export default function Home() {
   const downloadSinglePDF = () => {
     const input = document.getElementById("bill-receipt");
     if (!input) return;
-    html2canvas(input, { scale: 2 }).then((canvas) => {
+    html2canvas(input, {
+      scale: 2,
+      useCORS: true,
+      // html2canvas এর লেটেস্ট ভার্সনে lab কালার এরর এড়াতে অনক্লোন হুক ব্যবহার করা
+      onclone: (documentClone) => {
+        const el = documentClone.getElementById("bill-receipt");
+        if (el) el.style.color = "#000000";
+      }
+    }).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -447,7 +462,14 @@ export default function Home() {
   const triggerReportDownload = () => {
     const input = document.getElementById("printable-report");
     if (!input) return;
-    html2canvas(input, { scale: 2 }).then((canvas) => {
+    html2canvas(input, {
+      scale: 2,
+      useCORS: true,
+      onclone: (documentClone) => {
+        const el = documentClone.getElementById("printable-report");
+        if (el) el.style.color = "#000000";
+      }
+    }).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("l", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
