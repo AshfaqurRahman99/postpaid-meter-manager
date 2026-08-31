@@ -501,7 +501,7 @@ export default function Home() {
             </button>
           </div>
 
-          <div id="wzpdcl-printable-bill" className="bg-white p-8 font-sans text-gray-900 w-full max-w-[600px] shadow-2xl rounded-xl border-t-8 border-blue-600">
+          <div id="wzpdcl-printable-bill" className="bg-white p-8 font-sans text-gray-900 w-full max-w-[600px] border-t-8 border-blue-600">
             <div className="text-center border-b-2 border-gray-200 pb-4 mb-4">
               <h2 className="text-xl font-extrabold uppercase tracking-wider text-blue-800">Estimated Electricity Bill</h2>
               <p className="text-xs text-gray-500 mt-1 uppercase font-bold">Based on WZPDCL LT-A Tariff</p>
@@ -747,10 +747,10 @@ export default function Home() {
                     setSelectedMeter(m); setResult(null); setActualReading(""); setIsEditingConfig(false); setIsInputUnlocked(false);
                   }}
                   className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 border border-transparent flex justify-between items-center ${selectedMeter === m
-                      ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-                      : !isActive
-                        ? "text-gray-400 opacity-60 hover:bg-gray-50"
-                        : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
+                    ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
+                    : !isActive
+                      ? "text-gray-400 opacity-60 hover:bg-gray-50"
+                      : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
                     }`}
                 >
                   <div className="flex items-center overflow-hidden pr-2 flex-wrap gap-x-1">
@@ -987,7 +987,7 @@ export default function Home() {
                 ) : (
                   <div className="animation-fade-in flex flex-col h-full justify-between">
 
-                    <div id="bill-receipt" className="bg-white p-5 border border-gray-300 rounded shadow-sm mb-4">
+                    <div id="bill-receipt" className="bg-white p-5 border border-gray-300 mb-4">
 
                       <div className="flex justify-between items-center border-b-2 border-gray-200 pb-3 mb-4">
                         <h2 className="text-base font-extrabold uppercase tracking-widest text-gray-900 m-0">Invoice Slip</h2>
