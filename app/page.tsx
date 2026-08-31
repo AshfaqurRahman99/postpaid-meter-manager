@@ -1,18 +1,79 @@
-// @ts-nocheck
 "use client";
 import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
-// যদি শিট সম্পূর্ণ ফাঁকা থাকে, তবে এই ডিফল্ট ডেটাটি ইনিশিয়াল হিসেবে কাজ করবে
-const fallbackMeters = {
+// ---------------- TypeScript Interfaces ----------------
+interface MeterConfig {
+  useCarryLogic: boolean;
+  target: number;
+  maxCarry: number;
+}
+
+interface HistoryRecord {
+  month: string;
+  rawInput: number;
+  consumed: number;
+  billed: number;
+  carry: number;
+  reading: number;
+  prevReading: number;
+  prevCarry: number;
+  config: MeterConfig;
+  isLocked: boolean;
+  updatedAt: string;
+}
+
+interface MeterData {
+  meterNumber: string;
+  isActive: boolean;
+  useCarryLogic: boolean;
+  target: number;
+  maxCarry: number;
+  currentCarry: number;
+  lastReading: number;
+  history: HistoryRecord[];
+}
+
+interface MetersState {
+  [key: string]: MeterData;
+}
+
+interface WzpdclStep {
+  name: string;
+  rate: number;
+  units: number;
+  charge: number;
+}
+
+interface WzpdclBillData {
+  steps: WzpdclStep[];
+  energyCharge: number;
+  demandCharge: number;
+  principal: number;
+  vat: number;
+  total: number;
+  billedUnits: number;
+}
+
+interface CalcResult {
+  consumed: number;
+  billedUnits: number;
+  newCarry: number;
+  newAdjustedReading: number;
+  rawInput: number;
+  carryAdjustedText: string;
+}
+// --------------------------------------------------------
+
+const fallbackMeters: MetersState = {
   "Meter-1 (Flat A1)": {
     meterNumber: "33445566", isActive: true, useCarryLogic: true, target: 200, maxCarry: 100, currentCarry: 100, lastReading: 6000,
     history: []
   }
 };
 
-const allMonths = [
+const allMonths: string[] = [
   "January 2026", "February 2026", "March 2026", "April 2026",
   "May 2026", "June 2026", "July 2026", "August 2026",
   "September 2026", "October 2026", "November 2026", "December 2026"
@@ -27,31 +88,31 @@ export default function Home() {
   const availableMonths = allMonths.slice(0, allowedMonthIndex + 1);
   const defaultMonth = availableMonths.length > 0 ? availableMonths[availableMonths.length - 1] : allMonths[0];
 
-  const [meters, setMeters] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // ডেটাবেজ লোডিং স্টেট
-  const [selectedMeter, setSelectedMeter] = useState("");
-  const [billingMonth, setBillingMonth] = useState(defaultMonth);
-  const [actualReading, setActualReading] = useState("");
-  const [result, setResult] = useState(null);
+  // Apply TS Types to States
+  const [meters, setMeters] = useState<MetersState | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [selectedMeter, setSelectedMeter] = useState<string>("");
+  const [billingMonth, setBillingMonth] = useState<string>(defaultMonth);
+  const [actualReading, setActualReading] = useState<string>("");
+  const [result, setResult] = useState<CalcResult | null>(null);
 
-  const [isEditingConfig, setIsEditingConfig] = useState(false);
+  const [isEditingConfig, setIsEditingConfig] = useState<boolean>(false);
   const [configForm, setConfigForm] = useState({ name: "", meterNumber: "", target: 0, maxCarry: 0, useCarryLogic: true, isActive: true });
 
-  const [isAddingMeter, setIsAddingMeter] = useState(false);
+  const [isAddingMeter, setIsAddingMeter] = useState<boolean>(false);
   const [addMeterForm, setAddMeterForm] = useState({ name: "", meterNumber: "", target: 200, maxCarry: 100, initialReading: 0, useCarryLogic: true });
 
-  const [isInputUnlocked, setIsInputUnlocked] = useState(false);
+  const [isInputUnlocked, setIsInputUnlocked] = useState<boolean>(false);
 
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [showWzpdclModal, setShowWzpdclModal] = useState(false);
-  const [wzpdclBillData, setWzpdclBillData] = useState(null);
+  const [showReportModal, setShowReportModal] = useState<boolean>(false);
+  const [showWzpdclModal, setShowWzpdclModal] = useState<boolean>(false);
+  const [wzpdclBillData, setWzpdclBillData] = useState<WzpdclBillData | null>(null);
 
-  // ---------------- Database Sync Logic (Google Sheets API) ----------------
+  // ---------------- Database Sync Logic ----------------
   useEffect(() => {
-    // পেজ লোড হওয়ার সময় API থেকে ডেটা আনবে
     fetch('/api/meters')
       .then(res => res.json())
-      .then(data => {
+      .then((data: MetersState) => {
         if (data && Object.keys(data).length > 0) {
           setMeters(data);
           setSelectedMeter(Object.keys(data)[0]);
@@ -70,9 +131,8 @@ export default function Home() {
       });
   }, []);
 
-  const syncDatabase = async (updatedData) => {
+  const syncDatabase = async (updatedData: MetersState) => {
     try {
-      // যেকোনো আপডেটের পর API-তে POST রিকোয়েস্ট পাঠাবে
       await fetch('/api/meters', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,9 +143,9 @@ export default function Home() {
       alert("⚠️ গুগল শিটে ডেটা সেভ হতে সমস্যা হয়েছে। ইন্টারনেট কানেকশন চেক করুন!");
     }
   };
-  // ------------------------------------------------------------------------
+  // --------------------------------------------------------
 
-  if (isLoading) return (
+  if (isLoading || !meters) return (
     <div className="flex items-center justify-center h-screen bg-gray-50">
       <div className="text-center animation-fade-in">
         <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -102,13 +162,13 @@ export default function Home() {
   const isEditMode = !!existingRecord;
   const isLocked = existingRecord ? existingRecord.isLocked : false;
 
-  const baseReading = isEditMode ? existingRecord.prevReading : meter?.lastReading;
-  const baseCarry = isEditMode ? existingRecord.prevCarry : meter?.currentCarry;
+  const baseReading = isEditMode ? (existingRecord?.prevReading ?? 0) : (meter?.lastReading ?? 0);
+  const baseCarry = isEditMode ? (existingRecord?.prevCarry ?? 0) : (meter?.currentCarry ?? 0);
 
-  const calculateWzpdclBill = (units) => {
+  const calculateWzpdclBill = (units: number): WzpdclBillData => {
     let remaining = units;
     let energyCharge = 0;
-    const steps = [];
+    const steps: WzpdclStep[] = [];
 
     const slabs = [
       { name: "1st (0-75)", rate: 5.26, max: 75 },
@@ -137,7 +197,7 @@ export default function Home() {
     return { steps, energyCharge: parseFloat(energyCharge.toFixed(2)), demandCharge, principal: parseFloat(principal.toFixed(2)), vat, total, billedUnits: units };
   };
 
-  const openWzpdclBill = (units) => {
+  const openWzpdclBill = (units: number) => {
     setWzpdclBillData(calculateWzpdclBill(units));
     setShowWzpdclModal(true);
   };
@@ -168,7 +228,7 @@ export default function Home() {
     });
   };
 
-  const calculateBilling = (rawInputVal, currentMeterConfig, prevReading, prevCarry) => {
+  const calculateBilling = (rawInputVal: number, currentMeterConfig: MeterConfig, prevReading: number, prevCarry: number): CalcResult | null => {
     const consumed = rawInputVal - prevReading;
     if (consumed < 0) return null;
 
@@ -189,7 +249,7 @@ export default function Home() {
         billedUnits = consumed + allowedToPull;
       }
 
-      let carryDiff = billedUnits - consumed;
+      const carryDiff = billedUnits - consumed;
       carryAdjustedText = carryDiff === 0 ? "" : carryDiff > 0 ? `(+${carryDiff} from Carry)` : `(${carryDiff} to Carry)`;
     } else {
       newCarry = 0;
@@ -225,7 +285,7 @@ export default function Home() {
   const saveConfig = () => {
     if (!configForm.name.trim()) return alert("মিটারের নাম ফাঁকা রাখা যাবে না!");
 
-    const updatedMeters = { ...meters };
+    const updatedMeters: MetersState = { ...meters };
     const newTarget = Number(configForm.target);
     const newMaxCarry = Number(configForm.maxCarry);
 
@@ -246,7 +306,7 @@ export default function Home() {
     }
 
     setMeters(updatedMeters);
-    syncDatabase(updatedMeters); // গুগল শিটে সিঙ্ক
+    syncDatabase(updatedMeters);
     setIsEditingConfig(false);
     setResult(null);
   };
@@ -258,7 +318,7 @@ export default function Home() {
     const newTarget = Number(addMeterForm.target);
     const newMaxCarry = Number(addMeterForm.maxCarry);
 
-    const updatedMeters = {
+    const updatedMeters: MetersState = {
       ...meters,
       [addMeterForm.name]: {
         meterNumber: addMeterForm.meterNumber, target: newTarget, maxCarry: newMaxCarry, currentCarry: 0, lastReading: Number(addMeterForm.initialReading),
@@ -267,7 +327,7 @@ export default function Home() {
     };
 
     setMeters(updatedMeters);
-    syncDatabase(updatedMeters); // গুগল শিটে সিঙ্ক
+    syncDatabase(updatedMeters);
     setIsAddingMeter(false);
     setSelectedMeter(addMeterForm.name);
     setResult(null);
@@ -289,7 +349,7 @@ export default function Home() {
     setResult(calcResult);
   };
 
-  const handleSave = (shouldLock = false) => {
+  const handleSave = (shouldLock: boolean = false) => {
     const dataToSave = result || displayResult;
     if (!dataToSave) return alert("Nothing to save!");
 
@@ -297,7 +357,7 @@ export default function Home() {
       month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true
     });
 
-    const configToSave = result ? {
+    const configToSave: MeterConfig = result ? {
       useCarryLogic: meter.useCarryLogic,
       target: meter.target,
       maxCarry: meter.maxCarry
@@ -307,7 +367,7 @@ export default function Home() {
       maxCarry: meter.maxCarry
     });
 
-    const newRecord = {
+    const newRecord: HistoryRecord = {
       month: billingMonth,
       rawInput: dataToSave.rawInput,
       consumed: dataToSave.consumed,
@@ -328,7 +388,7 @@ export default function Home() {
       updatedHistory = [newRecord, ...meter.history];
     }
 
-    const updatedMeters = {
+    const updatedMeters: MetersState = {
       ...meters,
       [selectedMeter]: {
         ...meter,
@@ -339,7 +399,7 @@ export default function Home() {
     };
 
     setMeters(updatedMeters);
-    syncDatabase(updatedMeters); // গুগল শিটে সিঙ্ক
+    syncDatabase(updatedMeters);
     setResult(null);
     setActualReading("");
     setIsInputUnlocked(false);
@@ -355,7 +415,7 @@ export default function Home() {
     const confirmLock = confirm(`আপনি কি ${billingMonth} মাসের সব অ্যাকটিভ মিটারের বিল ফাইনাল/লক করতে চান?\nলক করার পর কোনো মিটারের ইউনিটে আর পরিবর্তন করা যাবে না!`);
     if (!confirmLock) return;
 
-    const updatedMeters = { ...meters };
+    const updatedMeters: MetersState = { ...meters };
     Object.keys(updatedMeters).forEach(m => {
       if (updatedMeters[m].isActive !== false) {
         const recordIndex = updatedMeters[m].history.findIndex(r => r.month === billingMonth);
@@ -366,7 +426,7 @@ export default function Home() {
     });
 
     setMeters(updatedMeters);
-    syncDatabase(updatedMeters); // গুগল শিটে সিঙ্ক
+    syncDatabase(updatedMeters);
     alert(`${billingMonth} মাসের সব বিল ডাটাবেজে সফলভাবে লক করা হয়েছে!`);
   };
 
@@ -397,7 +457,7 @@ export default function Home() {
     });
   };
 
-  const getShortMonth = (monthString) => {
+  const getShortMonth = (monthString: string): string => {
     const parts = monthString.split(" ");
     if (parts.length < 2) return monthString;
     return `${parts[0].substring(0, 3)} '${parts[1].substring(2)}`;
@@ -571,7 +631,7 @@ export default function Home() {
                           <div className="font-extrabold text-base">{m.split(" ")[0]}</div>
                           <div className="text-sm font-mono font-bold mt-1">No: {meterData.meterNumber || "N/A"}</div>
                         </td>
-                        <td className="border border-gray-300 p-3 text-center tracking-widest font-bold" colSpan="6">INACTIVE</td>
+                        <td className="border border-gray-300 p-3 text-center tracking-widest font-bold" colSpan={6}>INACTIVE</td>
                       </tr>
                     );
                   }
@@ -624,7 +684,7 @@ export default function Home() {
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-bold text-gray-700 mb-1">Initial Reading:</label>
-                  <input type="number" className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" value={addMeterForm.initialReading} onChange={e => setAddMeterForm({ ...addMeterForm, initialReading: e.target.value })} placeholder="e.g. 10500" />
+                  <input type="number" className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" value={addMeterForm.initialReading} onChange={e => setAddMeterForm({ ...addMeterForm, initialReading: Number(e.target.value) })} placeholder="e.g. 10500" />
                 </div>
               </div>
 
@@ -637,11 +697,11 @@ export default function Home() {
                 <div className="flex gap-4">
                   <div className="flex-1">
                     <label className="block text-sm font-bold text-gray-700 mb-1">Target Unit:</label>
-                    <input type="number" className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" value={addMeterForm.target} onChange={e => setAddMeterForm({ ...addMeterForm, target: e.target.value })} />
+                    <input type="number" className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" value={addMeterForm.target} onChange={e => setAddMeterForm({ ...addMeterForm, target: Number(e.target.value) })} />
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm font-bold text-gray-700 mb-1">Max Carry Limit:</label>
-                    <input type="number" className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" value={addMeterForm.maxCarry} onChange={e => setAddMeterForm({ ...addMeterForm, maxCarry: e.target.value })} />
+                    <input type="number" className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" value={addMeterForm.maxCarry} onChange={e => setAddMeterForm({ ...addMeterForm, maxCarry: Number(e.target.value) })} />
                   </div>
                 </div>
               )}
@@ -687,10 +747,10 @@ export default function Home() {
                     setSelectedMeter(m); setResult(null); setActualReading(""); setIsEditingConfig(false); setIsInputUnlocked(false);
                   }}
                   className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 border border-transparent flex justify-between items-center ${selectedMeter === m
-                    ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-                    : !isActive
-                      ? "text-gray-400 opacity-60 hover:bg-gray-50"
-                      : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
+                      ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
+                      : !isActive
+                        ? "text-gray-400 opacity-60 hover:bg-gray-50"
+                        : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
                     }`}
                 >
                   <div className="flex items-center overflow-hidden pr-2 flex-wrap gap-x-1">
@@ -783,11 +843,11 @@ export default function Home() {
                       <>
                         <div className="w-20">
                           <label className="block text-xs font-bold text-gray-600 mb-1">Target:</label>
-                          <input type="number" className="w-full p-1.5 text-sm border border-blue-200 rounded focus:outline-none focus:border-blue-500" value={configForm.target} onChange={e => setConfigForm({ ...configForm, target: e.target.value })} />
+                          <input type="number" className="w-full p-1.5 text-sm border border-blue-200 rounded focus:outline-none focus:border-blue-500" value={configForm.target} onChange={e => setConfigForm({ ...configForm, target: Number(e.target.value) })} />
                         </div>
                         <div className="w-20">
                           <label className="block text-xs font-bold text-gray-600 mb-1">Max Carry:</label>
-                          <input type="number" className="w-full p-1.5 text-sm border border-blue-200 rounded focus:outline-none focus:border-blue-500" value={configForm.maxCarry} onChange={e => setConfigForm({ ...configForm, maxCarry: e.target.value })} />
+                          <input type="number" className="w-full p-1.5 text-sm border border-blue-200 rounded focus:outline-none focus:border-blue-500" value={configForm.maxCarry} onChange={e => setConfigForm({ ...configForm, maxCarry: Number(e.target.value) })} />
                         </div>
                       </>
                     )}
@@ -827,7 +887,7 @@ export default function Home() {
                 {/* Lock Warning */}
                 {isEditMode && (
                   <div className={`absolute top-0 left-0 w-full text-[11px] font-bold px-3 py-1.5 text-center rounded-t-xl border-b ${isLocked ? 'bg-red-100 text-red-800 border-red-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>
-                    {isLocked ? "🔒 এই মাসের বিল ফাইনাল/লক করা হয়েছে। আর কোনো পরিবর্তন করা যাবে না।" : "⚠️ ডেটা ইতিমধ্যে সেভ করা আছে। পরিবর্তন করতে এডিট (✏️) বাটনে ক্লিক করুন।"}
+                    {isLocked ? "🔒 এই মাসের বিল ফাইনাল/লক করা হয়েছে। আর কোনো পরিবর্তন করা যাবে ইঞ্জিনিয়ারিং করা যাবে না।" : "⚠️ ডেটা ইতিমধ্যে সেভ করা আছে। পরিবর্তন করতে এডিট (✏️) বাটনে ক্লিক করুন।"}
                   </div>
                 )}
 
