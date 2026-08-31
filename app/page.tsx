@@ -203,7 +203,21 @@ export default function Home() {
   };
 
   const downloadWzpdclBillPDF = () => {
-    window.print();
+    const printContent = document.getElementById("wzpdcl-printable-bill")?.innerHTML;
+    if (!printContent) return;
+
+    const win = window.open('', '', 'height=700,width=700');
+    win.document.write('<html><head><title>WZPDCL Estimated Bill</title>');
+    win.document.write('<style>body{font-family:sans-serif;padding:20px;color:#111;} table{width:100%;border-collapse:collapse;margin-top:15px;} th,td{padding:8px;border:1px solid #ddd;text-align:left;}</style>');
+    win.document.write('</head><body>');
+    win.document.write(printContent);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.focus();
+    setTimeout(() => {
+      win.print();
+      win.close();
+    }, 500);
   };
 
   // const downloadWzpdclBillPDF = () => {
@@ -227,7 +241,21 @@ export default function Home() {
   // };
 
   const downloadSinglePDF = () => {
-    window.print();
+    const printContent = document.getElementById("bill-receipt")?.innerHTML;
+    if (!printContent) return;
+
+    const win = window.open('', '', 'height=700,width=700');
+    win.document.write('<html><head><title>Invoice Slip</title>');
+    win.document.write('<style>body{font-family:sans-serif;padding:20px;color:#111;} table{width:100%;border-collapse:collapse;} th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd;}</style>');
+    win.document.write('</head><body>');
+    win.document.write(printContent);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.focus();
+    setTimeout(() => {
+      win.print();
+      win.close();
+    }, 500);
   };
 
   // const downloadSinglePDF = () => {
@@ -467,8 +495,22 @@ export default function Home() {
     setShowReportModal(true);
   };
 
-  const triggerReportDownload = () => {
-    window.print();
+  const downloadWzpdclBillPDF = () => {
+    const printContent = document.getElementById("wzpdcl-printable-bill")?.innerHTML;
+    if (!printContent) return;
+
+    const win = window.open('', '', 'height=700,width=700');
+    win.document.write('<html><head><title>WZPDCL Estimated Bill</title>');
+    win.document.write('<style>body{font-family:sans-serif;padding:20px;color:#111;} table{width:100%;border-collapse:collapse;margin-top:15px;} th,td{padding:8px;border:1px solid #ddd;text-align:left;}</style>');
+    win.document.write('</head><body>');
+    win.document.write(printContent);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.focus();
+    setTimeout(() => {
+      win.print();
+      win.close();
+    }, 500);
   };
 
   // const triggerReportDownload = () => {
