@@ -3,24 +3,12 @@ import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
-// ১১টি মিটারের ডেমো ডেটা (Meter-1 এর গাণিতিক ভুল ঠিক করা হয়েছে)
-const initialMeters = {
+// যদি শিট সম্পূর্ণ ফাঁকা থাকে, তবে এই ডিফল্ট ডেটাটি ইনিশিয়াল হিসেবে কাজ করবে
+const fallbackMeters = {
   "Meter-1 (Flat A1)": {
     meterNumber: "33445566", isActive: true, useCarryLogic: true, target: 200, maxCarry: 100, currentCarry: 100, lastReading: 6000,
-    history: [
-      { month: "August 2026", rawInput: 6000, consumed: 400, billed: 400, carry: 100, reading: 6000, prevReading: 5600, prevCarry: 100, updatedAt: "Aug 30, 2026, 06:10 PM", config: { useCarryLogic: true, target: 200, maxCarry: 100 }, isLocked: false }
-    ]
-  },
-  "Meter-2 (Flat A2)": { meterNumber: "11223344", isActive: true, useCarryLogic: true, target: 250, maxCarry: 150, currentCarry: 30, lastReading: 8200, history: [] },
-  "Meter-3 (Flat B1)": { meterNumber: "99887766", isActive: true, useCarryLogic: true, target: 200, maxCarry: 100, currentCarry: 100, lastReading: 3800, history: [] },
-  "Meter-4 (Flat B2)": { meterNumber: "55443322", isActive: true, useCarryLogic: true, target: 200, maxCarry: 100, currentCarry: 20, lastReading: 4100, history: [] },
-  "Meter-5 (Flat C1)": { meterNumber: "10203040", isActive: true, useCarryLogic: true, target: 200, maxCarry: 100, currentCarry: 0, lastReading: 2100, history: [] },
-  "Meter-6 (Flat C2)": { meterNumber: "50607080", isActive: true, useCarryLogic: true, target: 200, maxCarry: 100, currentCarry: 50, lastReading: 1500, history: [] },
-  "Meter-7 (Flat D1)": { meterNumber: "13579246", isActive: true, useCarryLogic: true, target: 200, maxCarry: 100, currentCarry: 10, lastReading: 6200, history: [] },
-  "Meter-8 (Flat D2)": { meterNumber: "24681357", isActive: true, useCarryLogic: true, target: 200, maxCarry: 100, currentCarry: 0, lastReading: 7300, history: [] },
-  "Meter-9 (Flat E1)": { meterNumber: "11221122", isActive: true, useCarryLogic: true, target: 200, maxCarry: 100, currentCarry: 40, lastReading: 8400, history: [] },
-  "Meter-10 (Flat E2)": { meterNumber: "99009900", isActive: false, useCarryLogic: false, target: 0, maxCarry: 0, currentCarry: 0, lastReading: 9500, history: [] },
-  "Meter-11 (Shop)": { meterNumber: "77778888", isActive: true, useCarryLogic: true, target: 300, maxCarry: 150, currentCarry: 80, lastReading: 10600, history: [] },
+    history: []
+  }
 };
 
 const allMonths = [
@@ -38,8 +26,9 @@ export default function Home() {
   const availableMonths = allMonths.slice(0, allowedMonthIndex + 1);
   const defaultMonth = availableMonths.length > 0 ? availableMonths[availableMonths.length - 1] : allMonths[0];
 
-  const [meters, setMeters] = useState(initialMeters);
-  const [selectedMeter, setSelectedMeter] = useState("Meter-1 (Flat A1)");
+  const [meters, setMeters] = useState(null);
+  const [isLoading, setIsLoading] = useState(true); // ডেটাবেজ লোডিং স্টেট
+  const [selectedMeter, setSelectedMeter] = useState("");
   const [billingMonth, setBillingMonth] = useState(defaultMonth);
   const [actualReading, setActualReading] = useState("");
   const [result, setResult] = useState(null);
@@ -55,6 +44,55 @@ export default function Home() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showWzpdclModal, setShowWzpdclModal] = useState(false);
   const [wzpdclBillData, setWzpdclBillData] = useState(null);
+
+  // ---------------- Database Sync Logic (Google Sheets API) ----------------
+  useEffect(() => {
+    // পেজ লোড হওয়ার সময় API থেকে ডেটা আনবে
+    fetch('/api/meters')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Object.keys(data).length > 0) {
+          setMeters(data);
+          setSelectedMeter(Object.keys(data)[0]);
+        } else {
+          setMeters(fallbackMeters);
+          setSelectedMeter(Object.keys(fallbackMeters)[0]);
+        }
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch data:", err);
+        alert("ডেটাবেজ কানেকশনে সমস্যা হয়েছে! ডিফল্ট ডেটা লোড করা হচ্ছে।");
+        setMeters(fallbackMeters);
+        setSelectedMeter(Object.keys(fallbackMeters)[0]);
+        setIsLoading(false);
+      });
+  }, []);
+
+  const syncDatabase = async (updatedData) => {
+    try {
+      // যেকোনো আপডেটের পর API-তে POST রিকোয়েস্ট পাঠাবে
+      await fetch('/api/meters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData)
+      });
+    } catch (err) {
+      console.error("Database sync failed:", err);
+      alert("⚠️ গুগল শিটে ডেটা সেভ হতে সমস্যা হয়েছে। ইন্টারনেট কানেকশন চেক করুন!");
+    }
+  };
+  // ------------------------------------------------------------------------
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="text-center animation-fade-in">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <h2 className="text-2xl font-bold text-gray-700">Connecting to Google Sheets...</h2>
+        <p className="text-gray-500 mt-2">দয়া করে অপেক্ষা করুন, ডেটাবেজ লোড হচ্ছে।</p>
+      </div>
+    </div>
+  );
 
   const meter = meters[selectedMeter];
 
@@ -116,7 +154,6 @@ export default function Home() {
     });
   };
 
-  // মিসিং ফাংশনটি এখানে যুক্ত করা হলো
   const downloadSinglePDF = () => {
     const input = document.getElementById("bill-receipt");
     if (!input) return;
@@ -208,6 +245,7 @@ export default function Home() {
     }
 
     setMeters(updatedMeters);
+    syncDatabase(updatedMeters); // গুগল শিটে সিঙ্ক
     setIsEditingConfig(false);
     setResult(null);
   };
@@ -219,16 +257,21 @@ export default function Home() {
     const newTarget = Number(addMeterForm.target);
     const newMaxCarry = Number(addMeterForm.maxCarry);
 
-    setMeters({
+    const updatedMeters = {
       ...meters,
       [addMeterForm.name]: {
         meterNumber: addMeterForm.meterNumber, target: newTarget, maxCarry: newMaxCarry, currentCarry: 0, lastReading: Number(addMeterForm.initialReading),
         history: [], useCarryLogic: addMeterForm.useCarryLogic, isActive: true
       }
-    });
+    };
 
-    setIsAddingMeter(false); setSelectedMeter(addMeterForm.name); setResult(null); setActualReading("");
-    alert("নতুন মিটার সফলভাবে যুক্ত হয়েছে!");
+    setMeters(updatedMeters);
+    syncDatabase(updatedMeters); // গুগল শিটে সিঙ্ক
+    setIsAddingMeter(false);
+    setSelectedMeter(addMeterForm.name);
+    setResult(null);
+    setActualReading("");
+    alert("নতুন মিটার সফলভাবে ডাটাবেজে যুক্ত হয়েছে!");
   };
 
   const handleCalculate = () => {
@@ -284,7 +327,7 @@ export default function Home() {
       updatedHistory = [newRecord, ...meter.history];
     }
 
-    setMeters({
+    const updatedMeters = {
       ...meters,
       [selectedMeter]: {
         ...meter,
@@ -292,14 +335,18 @@ export default function Home() {
         currentCarry: updatedHistory[0].carry,
         history: updatedHistory
       }
-    });
+    };
 
-    setResult(null); setActualReading(""); setIsInputUnlocked(false);
+    setMeters(updatedMeters);
+    syncDatabase(updatedMeters); // গুগল শিটে সিঙ্ক
+    setResult(null);
+    setActualReading("");
+    setIsInputUnlocked(false);
 
     if (shouldLock) {
-      alert(`${billingMonth} মাসের বিল সফলভাবে ফাইনাল এবং লক করা হয়েছে!`);
+      alert(`${billingMonth} মাসের বিল সফলভাবে ডাটাবেজে ফাইনাল এবং লক করা হয়েছে!`);
     } else {
-      alert(isEditMode ? `${billingMonth} মাসের বিল সফলভাবে আপডেট করা হয়েছে!` : `${billingMonth} মাসের নতুন ডেটা সেভ করা হয়েছে!`);
+      alert(isEditMode ? `${billingMonth} মাসের বিল সফলভাবে ডাটাবেজে আপডেট করা হয়েছে!` : `${billingMonth} মাসের নতুন ডেটা ডাটাবেজে সেভ করা হয়েছে!`);
     }
   };
 
@@ -318,7 +365,8 @@ export default function Home() {
     });
 
     setMeters(updatedMeters);
-    alert(`${billingMonth} মাসের সব বিল সফলভাবে লক করা হয়েছে!`);
+    syncDatabase(updatedMeters); // গুগল শিটে সিঙ্ক
+    alert(`${billingMonth} মাসের সব বিল ডাটাবেজে সফলভাবে লক করা হয়েছে!`);
   };
 
   const handleOpenReport = () => {
@@ -638,10 +686,10 @@ export default function Home() {
                     setSelectedMeter(m); setResult(null); setActualReading(""); setIsEditingConfig(false); setIsInputUnlocked(false);
                   }}
                   className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 border border-transparent flex justify-between items-center ${selectedMeter === m
-                    ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-                    : !isActive
-                      ? "text-gray-400 opacity-60 hover:bg-gray-50"
-                      : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
+                      ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
+                      : !isActive
+                        ? "text-gray-400 opacity-60 hover:bg-gray-50"
+                        : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
                     }`}
                 >
                   <div className="flex items-center overflow-hidden pr-2 flex-wrap gap-x-1">
@@ -775,6 +823,7 @@ export default function Home() {
 
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full justify-between relative">
 
+                {/* Lock Warning */}
                 {isEditMode && (
                   <div className={`absolute top-0 left-0 w-full text-[11px] font-bold px-3 py-1.5 text-center rounded-t-xl border-b ${isLocked ? 'bg-red-100 text-red-800 border-red-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>
                     {isLocked ? "🔒 এই মাসের বিল ফাইনাল/লক করা হয়েছে। আর কোনো পরিবর্তন করা যাবে না।" : "⚠️ ডেটা ইতিমধ্যে সেভ করা আছে। পরিবর্তন করতে এডিট (✏️) বাটনে ক্লিক করুন।"}
