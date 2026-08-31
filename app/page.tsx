@@ -206,7 +206,7 @@ export default function Home() {
     setShowWzpdclModal(true);
   };
 
-  // Generate SMS Text Format
+  // Generate SMS Text Format with Last Adjusted Reading
   const generateSmsText = (): string => {
     const monthParts = billingMonth.split(" ");
     const monthName = monthParts[0] || billingMonth;
@@ -219,12 +219,12 @@ export default function Home() {
       if (meterData.isActive === false) return;
 
       const record = meterData.history.find(h => h.month === billingMonth);
-      const units = record ? record.billed : 0;
+      const readingVal = record ? record.reading : 0;
       const fullMeterNo = meterData.meterNumber || "000";
       const last3Digit = fullMeterNo.slice(-3);
 
-      // Format: Last 3 digit : Unit KW hr
-      sms += `${last3Digit}: ${units} KW hr\n`;
+      // Format: Last 3 digit : Present Adjusted Reading KW hr
+      sms += `${last3Digit}: ${readingVal} KW hr\n`;
     });
 
     return sms.trim();
@@ -248,24 +248,6 @@ export default function Home() {
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`WZPDCL_Estimated_Bill_${selectedMeter.split(" ")[0]}_${billingMonth}.pdf`);
     });
-  };
-
-  const downloadSinglePDF = () => {
-    const printContent = document.getElementById("bill-receipt")?.innerHTML;
-    if (!printContent) return;
-
-    const win = window.open('', '', 'height=700,width=700');
-    win?.document.write('<html><head><title>Invoice Slip</title>');
-    win?.document.write('<style>body{font-family:sans-serif;padding:20px;color:#111;} table{width:100%;border-collapse:collapse;} th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd;}</style>');
-    win?.document.write('</head><body>');
-    win?.document.write(printContent);
-    win?.document.write('</body></html>');
-    win?.document.close();
-    win?.focus();
-    setTimeout(() => {
-      win?.print();
-      win?.close();
-    }, 500);
   };
 
   const calculateBilling = (rawInputVal: number, currentMeterConfig: MeterConfig, prevReading: number, prevCarry: number): CalcResult | null => {
@@ -727,7 +709,7 @@ export default function Home() {
             <h2 className="text-xl font-bold text-gray-800 mb-2 flex items-center gap-2">
               💬 SMS Format ({billingMonth})
             </h2>
-            <p className="text-xs text-gray-500 mb-4">বিলারকে পাঠানোর জন্য নিচের ফরম্যাটটি অটোমেটিক তৈরি হয়েছে। কপি করে পেস্ট করে দিন:</p>
+            <p className="text-xs text-gray-500 mb-4">বিলারকে পাঠানোর জন্য নিচের ফরম্যাটটি অটোমেটিক তৈরি হয়েছে (Last Adjusted Reading সহ):</p>
 
             <textarea
               readOnly
