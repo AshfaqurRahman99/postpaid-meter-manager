@@ -501,7 +501,7 @@ export default function Home() {
             </button>
           </div>
 
-          <div id="wzpdcl-printable-bill" className="bg-white p-8 font-sans text-gray-900 w-full max-w-[600px] border-t-8 border-blue-600">
+          <div id="wzpdcl-printable-bill" style={{ backgroundColor: "#ffffff", padding: "32px", fontFamily: "sans-serif", color: "#111827", width: "100%", maxWidth: "600px", borderTop: "8px solid #2563eb" }}>
             <div className="text-center border-b-2 border-gray-200 pb-4 mb-4">
               <h2 className="text-xl font-extrabold uppercase tracking-wider text-blue-800">Estimated Electricity Bill</h2>
               <p className="text-xs text-gray-500 mt-1 uppercase font-bold">Based on WZPDCL LT-A Tariff</p>
@@ -987,7 +987,7 @@ export default function Home() {
                 ) : (
                   <div className="animation-fade-in flex flex-col h-full justify-between">
 
-                    <div id="bill-receipt" className="bg-white p-5 border border-gray-300 mb-4">
+                    <div id="bill-receipt" style={{ backgroundColor: "#ffffff", padding: "20px", border: "1px solid #d1d5db", marginBottom: "16px" }}>
 
                       <div className="flex justify-between items-center border-b-2 border-gray-200 pb-3 mb-4">
                         <h2 className="text-base font-extrabold uppercase tracking-widest text-gray-900 m-0">Invoice Slip</h2>
