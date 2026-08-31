@@ -219,6 +219,7 @@ export default function Home() {
       if (meterData.isActive === false) return;
 
       const record = meterData.history.find(h => h.month === billingMonth);
+      // এখানে units এর বদলে record.reading (Present Adjusted Reading) ব্যবহার করা হয়েছে
       const readingVal = record ? record.reading : 0;
       const fullMeterNo = meterData.meterNumber || "000";
       const last3Digit = fullMeterNo.slice(-3);
@@ -248,6 +249,24 @@ export default function Home() {
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`WZPDCL_Estimated_Bill_${selectedMeter.split(" ")[0]}_${billingMonth}.pdf`);
     });
+  };
+
+  const downloadSinglePDF = () => {
+    const printContent = document.getElementById("bill-receipt")?.innerHTML;
+    if (!printContent) return;
+
+    const win = window.open('', '', 'height=700,width=700');
+    win?.document.write('<html><head><title>Invoice Slip</title>');
+    win?.document.write('<style>body{font-family:sans-serif;padding:20px;color:#111;} table{width:100%;border-collapse:collapse;} th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd;}</style>');
+    win?.document.write('</head><body>');
+    win?.document.write(printContent);
+    win?.document.write('</body></html>');
+    win?.document.close();
+    win?.focus();
+    setTimeout(() => {
+      win?.print();
+      win?.close();
+    }, 500);
   };
 
   const calculateBilling = (rawInputVal: number, currentMeterConfig: MeterConfig, prevReading: number, prevCarry: number): CalcResult | null => {
@@ -709,7 +728,7 @@ export default function Home() {
             <h2 className="text-xl font-bold text-gray-800 mb-2 flex items-center gap-2">
               💬 SMS Format ({billingMonth})
             </h2>
-            <p className="text-xs text-gray-500 mb-4">বিলারকে পাঠানোর জন্য নিচের ফরম্যাটটি অটোমেটিক তৈরি হয়েছে (Last Adjusted Reading সহ):</p>
+            <p className="text-xs text-gray-500 mb-4">বিলারকে পাঠানোর জন্য নিচের ফরম্যাটটি অটোমেটিক তৈরি হয়েছে। কপি করে পেস্ট করে দিন:</p>
 
             <textarea
               readOnly
@@ -816,10 +835,10 @@ export default function Home() {
                     setSelectedMeter(m); setResult(null); setActualReading(""); setIsEditingConfig(false); setIsInputUnlocked(false);
                   }}
                   className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 border border-transparent flex justify-between items-center ${selectedMeter === m
-                      ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-                      : !isActive
-                        ? "text-gray-400 opacity-60 hover:bg-gray-50"
-                        : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
+                    ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
+                    : !isActive
+                      ? "text-gray-400 opacity-60 hover:bg-gray-50"
+                      : "text-gray-600 hover:bg-gray-50 hover:border-gray-200"
                     }`}
                 >
                   <div className="flex items-center overflow-hidden pr-2 flex-wrap gap-x-1">
